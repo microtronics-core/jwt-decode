@@ -1,0 +1,22 @@
+{
+  "name": "jwt-decode",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/microtronics-core/jwt-decode.git"
+  },
+  "author": "lusc",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/microtronics-core/jwt-decode/issues"
+  },
+  "homepage": "https://github.com/microtronics-core/jwt-decode#readme",
+  "dependencies": {
+    "jsonwebtoken": "^8.2.0"
+  }
+}
