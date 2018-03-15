@@ -28,4 +28,3 @@ module.exports = function (options) {
   return new jwtDecode(options);
 };
 
-
