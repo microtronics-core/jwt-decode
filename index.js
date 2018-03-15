@@ -27,4 +27,3 @@ jwtDecode.prototype.verifyToken = function (token, publicKey) {
 module.exports = function (options) {
   return new jwtDecode(options);
 };
-
