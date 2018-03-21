@@ -1,11 +1,11 @@
 'use strict';
 
-let jwt = require('jsonwebtoken');
-let request = require('request-json');
-let parseToken = require('parse-bearer-token');
-let Validator = require('jsonschema').Validator;
+const jwt = require('jsonwebtoken');
+const request = require('request-json');
+const parseToken = require('parse-bearer-token');
+const Validator = require('jsonschema').Validator;
 
-let optionsSchema = {
+const optionsSchema = {
   'type': 'object',
   'properties': {
     'KeyServer': {'type': 'string'},
