@@ -8,10 +8,9 @@ const Validator = require('jsonschema').Validator;
 const optionsSchema = {
   'type': 'object',
   'properties': {
-    'KeyServer': {'type': 'string'},
-    'ApplianceId': {'type': 'string'}
+    'KeyServer': {'type': 'string'}
   },
-  'required': ['KeyServer', 'ApplianceId']
+  'required': ['KeyServer']
 };
 
 let jwtDecode = function (options) {
@@ -20,57 +19,64 @@ let jwtDecode = function (options) {
     v.validate(options, optionsSchema, {throwError: true});
   }
   catch (error) {
-    console.error('JSON-Schema validation failed: ' + error);
+    console.error('JSON-Schema validation failed: ' + error); //TODO: throw error???
   }
 
   this._keyServer = options.KeyServer;
-  this._applianceId = options.ApplianceId;
 
   this._client = request.createClient(options.KeyServer);
 };
 
-jwtDecode.prototype._requestPublicKey = function (onDone) {
-  let path = '/api/1/keys/' + this._applianceId;
-  this._client.get(path, (err, res, body) => {
-    if(err) {
-      console.error('Request to ' + this._keyServer + path + ' failed: ' + err);
-      onDone(null);
+jwtDecode.prototype.verifyToken = function (token) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      let publicKey = await requestPublicKey(this._client, token);
+      resolve(await verifyToken(token, publicKey));
     }
-    else {
-      onDone(body.PublicKey);
+    catch(err){
+      reject(err);
     }
   });
 };
 
-jwtDecode.prototype.verifyToken = function (token, onDone) {
-  this._requestPublicKey((publicKey) => {
-    jwt.verify(token, publicKey, (err, decoded) => {
-      if(err) {
-        console.error(err);
-        onDone(err);
-      }
-      else {
-        onDone(null, decoded);
-      }
-    });
+jwtDecode.prototype.verifyRequest = function (req) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      let token = parseToken(req);
+      let publicKey = await requestPublicKey(this._client, token);
+      let decoded = await verifyToken(token, publicKey);
+      req.decoded = decoded;
+      resolve(decoded);
+    }
+    catch(err) {
+      reject(err);
+    }
   });
 };
 
-jwtDecode.prototype.verifyRequest = function (req, onDone) {
-  this._requestPublicKey((publicKey) => {
-    let token = parseToken(req);
-    jwt.verify(token, publicKey, (err, decoded) => {
-      if(err) {
-        console.error(err);
-        onDone(err);
-      }
-      else {
-        req.decoded = decoded;
-        onDone(null);
-      }
+function requestPublicKey(client, token) {
+  return new Promise((resolve, reject) => {
+    let payload = JSON.parse(new Buffer(token.substring(token.indexOf('.') + 1, token.lastIndexOf('.')), 'base64'));
+    let path = '/api/1/keys/' + payload.orig;   // payload.orig = applianceid
+    client.get(path, (err, res, body) => {
+      if(err)
+        reject(err);
+      else
+        resolve(body.PublicKey);
     });
   });
-};
+}
+
+function verifyToken(token, publicKey) {
+  return new Promise((resolve, reject) => {
+    jwt.verify(token, Buffer.from(publicKey, 'base64'), (err, decoded) => {
+      if (err)
+        reject(err);
+      else
+        resolve(decoded);
+    });
+  });
+}
 
 //module.exports = jwtDecode;
 module.exports = function (options) {
