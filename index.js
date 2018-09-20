@@ -68,27 +68,27 @@ function requestPublicKey(client, token) {
 
 function verifyToken(token, publicKey) {
   return new Promise((resolve, reject) => {
-      let pubKey=new sshpk.Key({
-          type: 'ed25519',
-          parts: [
-              { name: 'A', data: Buffer.from(publicKey, 'hex')}
-          ]
-      });
-      let tokenParts=token.split('.');
-      let signature = new sshpk.Signature({
-        type: 'ed25519',
-        hashAlgorithm: 'sha512',
-        parts: [
-            { name: 'sig', data: Buffer.from(tokenParts[2], 'base64')}
-        ]
-      });
-      let verifier=pubKey.createVerify();
-      verifier.update(`${tokenParts[0]}.${tokenParts[1]}`);
-      if (verifier.verify(signature)) {
-          resolve();
-      } else {
-          reject();
-      }
+    let pubKey=new sshpk.Key({
+      type: 'ed25519',
+      parts: [
+        { name: 'A', data: Buffer.from(publicKey, 'hex')}
+      ]
+    });
+    let tokenParts=token.split('.');
+    let signature = new sshpk.Signature({
+      type: 'ed25519',
+      hashAlgorithm: 'sha512',
+      parts: [
+        { name: 'sig', data: Buffer.from(tokenParts[2], 'base64')}
+      ]
+    });
+    let verifier=pubKey.createVerify();
+    verifier.update(`${tokenParts[0]}.${tokenParts[1]}`);
+    if (verifier.verify(signature)) {
+      resolve();
+    } else {
+      reject();
+    }
   });
 }
 
