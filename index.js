@@ -18,19 +18,29 @@ let jwtDecode = function (options) {
     v.validate(options, optionsSchema, {throwError: true});
   }
   catch (error) {
-    console.error('JSON-Schema validation failed: ' + error); //TODO: throw error???
+    console.error('JSON-Schema validation failed: ' + error);
   }
 
   this._keyServer = options.KeyServer || "https://keyservice.microtronics.com";
-
   this._client = request.createClient(options.KeyServer);
+
+  this._publicKey = options.publicKey;
+
+  //this option may be set from the outside to avoid the check of the signature part (useful for development purposes)
+  this._skipVerification = options.skipVerification || false;
 };
 
 jwtDecode.prototype.verifyToken = function (token) {
+  let me=this;
   return new Promise(async (resolve, reject) => {
     try {
-      let publicKey = await requestPublicKey(this._client, token);
-      resolve(await verifyToken(token, publicKey));
+      if (!me._publicKey)
+        me._publicKey = await requestPublicKey(this._client, token);
+
+      if (me._skipVerification)
+        resolve();
+      else
+        resolve(await verifyToken(token, me._publicKey));
     }
     catch(err){
       reject(err);
@@ -39,13 +49,15 @@ jwtDecode.prototype.verifyToken = function (token) {
 };
 
 jwtDecode.prototype.verifyRequest = function (req) {
+  const me=this;
   return new Promise(async (resolve, reject) => {
     try {
       let token = parseToken(req);
-      let publicKey = await requestPublicKey(this._client, token);
-      let decoded = await verifyToken(token, publicKey);
-      req.decoded = decoded;
-      resolve(decoded);
+      if (!token)
+        return reject();
+      await me.verifyToken(token);
+      req._jwtPayload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+      resolve();
     }
     catch(err) {
       reject(err);
@@ -75,9 +87,14 @@ function verifyToken(token, publicKey) {
       ]
     });
     let tokenParts=token.split('.');
+    let header = JSON.parse(Buffer.from(tokenParts[0],'base64').toString());
+    let alg = /^(ES|RS)512$/.exec(header.alg);
+    if (header.typ !== "JWT" || !alg)
+      return reject();
+
     let signature = new sshpk.Signature({
-      type: 'ed25519',
-      hashAlgorithm: 'sha512',
+      type: (alg[1]==='ES' ? 'ed25519': 'rsa'),
+      hashAlgo: 'sha512', //we're only going to support sha512
       parts: [
         { name: 'sig', data: Buffer.from(tokenParts[2], 'base64')}
       ]
@@ -92,7 +109,4 @@ function verifyToken(token, publicKey) {
   });
 }
 
-//module.exports = jwtDecode;
-module.exports = function (options) {
-  return new jwtDecode(options);
-};
+module.exports = jwtDecode;
