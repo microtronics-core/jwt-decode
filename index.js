@@ -22,7 +22,7 @@ let jwtDecode = function (options) {
   }
 
   this._keyServer = options.KeyServer || "https://keyservice.microtronics.com";
-  this._client = request.createClient(options.KeyServer);
+  this._client = request.createClient(this._keyServer);
 
   this._publicKey = options.publicKey;
 
